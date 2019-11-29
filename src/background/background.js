@@ -48,7 +48,6 @@ browser.runtime.onInstalled.addListener(() => {
   });
 
   browser.notifications.onButtonClicked.addListener((id, button) => {
-    console.log(id, button);
     if (button === 0) {
       ratSocket.send(JSON.stringify({id, userId}));
     }
