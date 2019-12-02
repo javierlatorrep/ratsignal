@@ -8,17 +8,7 @@ ReactDOM.render(
 );
 
 const ratActionMessage = {
-  id: 'RAT_ACTION',
-  notification: {
-    iconUrl: browser.runtime.getURL('icons/ratsignal-32.png'),
-    type: 'basic',
-    title: 'A ratear!',
-    message: 'Somebody is looking for you to RAT!',
-    buttons: [
-      {title: 'Accept'},
-      {title:'Cancel'}
-    ]
-  }
+  id: 'RAT_ACTION'
 };
 
 document.querySelector('.ratButton').addEventListener("click", () => {
