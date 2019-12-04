@@ -1,46 +1,104 @@
-class RatSocket {
+import EventEmitter from 'events';
+
+const statesLookup = {
+  0: 'CONNECTING',
+  1: 'OPEN',
+  2: 'CLOSING',
+  3: 'CLOSED',
+};
+
+class RatSocket extends EventEmitter {
   /**
    * @param {String} wsUrl
-   * @param {Function} onMessage
    */
-  constructor(wsUrl, onMessage) {
-    this._wsUrl = wsUrl
-    this._onMessage = onMessage
-    this._websocket = null
+  constructor(wsUrl) {
+    super();
+
+    this._wsUrl = wsUrl;
+    this._webSocket = null;
+
+    // good enough?
+    this._clientId = `rat-${Date.now()}-${parseInt(Math.random()*1000)}`;
   }
 
-  start() {
-    this._websocket = new WebSocket(this._wsUrl)
-    this._websocket.onopen = this.onOpen
-    this._websocket.onmessage = this.onMessage.bind(this)
-    this._websocket.onclose = this.onClose
+  connect() {
+    this._webSocket = new WebSocket(this._wsUrl);
+
+    [
+      'close',
+      'error',
+      'message',
+      'open'
+    ].forEach((eventName) => {
+      const methodName = `on${eventName}`;
+      this._webSocket[methodName] = this[methodName].bind(this);
+    });
   }
 
   /**
-   * @param {String} message
+   * @param {Object} message
+   * @param {string} [mode='send']
    */
-  send(message) {
-    this._websocket.send(message)
+  send(message, mode = 'send') {
+    const currentState = statesLookup[this._webSocket.readyState];
+    if (currentState !== 'OPEN') {
+      throw new Error(`WebSocket not opened! (readyState=${this._webSocket.readyState} -> "${currentState}")`);
+    }
+
+    this._webSocket.send(JSON.stringify({
+      clientId: this._clientId,
+      mode,
+      ...message,
+    }))
+  }
+
+  /**
+   * @param {Object} message
+   */
+  broadcast(message) {
+    this.send(message, 'broadcast');
   }
 
   close() {
-    this._websocket.close()
+    this._webSocket.close()
   }
 
-  onOpen() {
-    console.log(`${RatSocket.NAMESPACE} OPENED CONNECTION`)
+  onclose(event) {
+    console.info('Connection closed', event);
+    console.log(this._webSocket);
+    this.emit('close', event);
   }
 
-  onMessage({ data }) {
-    console.log(`${RatSocket.NAMESPACE} RECEIVED MESSAGE`, data)
-    this._onMessage(data)
+  onerror(event) {
+    console.error('Error', this._webSocket);
+    console.error(event);
+    this.emit('error', event);
   }
 
-  onClose() {
-    console.log(`${RatSocket.NAMESPACE} CLOSED CONNECTION`)
+  onmessage(event) {
+    console.log('Message received', event);
+    console.log(this._webSocket);
+
+    // TODO: try-catch + emit('error') ?
+    const message = JSON.parse(event.data);
+
+    const { mode, clientId } = message;
+
+    if (message.mode === 'broadcast') {
+      if (message.clientId !== this._clientId) {
+        this.emit('message', message);
+      }
+      return;
+    }
+
+    this.emit('message', message);
+  }
+
+  onopen(event) {
+    console.info('Connection opened', event);
+    console.log(this._webSocket);
+    this.emit('open', event);
   }
 }
-
-RatSocket.NAMESPACE = 'WS:'
 
 export default RatSocket
