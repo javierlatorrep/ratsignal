@@ -48,7 +48,7 @@ class RatSocket extends EventEmitter {
     this._webSocket.send(JSON.stringify({
       clientId: this._clientId,
       mode,
-      ...message,
+      data: message,
     }))
   }
 
@@ -80,18 +80,18 @@ class RatSocket extends EventEmitter {
     console.log(this._webSocket);
 
     // TODO: try-catch + emit('error') ?
-    const message = JSON.parse(event.data);
+    const messageData = JSON.parse(event.data);
 
-    const { mode, clientId } = message;
+    const { clientId, mode, data } = messageData;
 
-    if (message.mode === 'broadcast') {
-      if (message.clientId !== this._clientId) {
-        this.emit('message', message);
+    if (mode === 'broadcast') {
+      if (clientId !== this._clientId) {
+        this.emit('message', data);
       }
       return;
     }
 
-    this.emit('message', message);
+    this.emit('message', data);
   }
 
   onopen(event) {
